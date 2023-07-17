@@ -1,0 +1,10 @@
+{
+    "Lua.diagnostics.disable": [
+        "unused-local",
+        "lowercase-global",
+        "unused-function",
+        "undefined-doc-name",
+        "cast-local-type",
+        "redefined-local"
+    ]
+}
