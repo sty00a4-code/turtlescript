@@ -48,34 +48,34 @@ function DataStat.Constant.new(ident, expr, pos)
     }, DataStat.Constant.mt)
 end
 ---@param ident Atom.Ident
----@param args Atom.Ident[]
+---@param params Atom.Ident[]
 ---@param collect Atom.Ident?
 ---@param body Expr|Block
 ---@param pos Position
 ---@return DataStat.Function
-function DataStat.Function.new(ident, args, collect, body, pos)
+function DataStat.Function.new(ident, params, collect, body, pos)
     ---@class DataStat.Function
     return setmetatable({
         type = DataStat.Function.mt.__name,
         ident = ident,
-        args = args,
+        params = params,
         collect = collect,
         body = body,
         pos = pos
     }, DataStat.Function.mt)
 end
 ---@param ident Atom.Ident
----@param args Atom.Ident[]
+---@param params Atom.Ident[]
 ---@param collect Atom.Ident?
 ---@param body Stat|Block
 ---@param pos Position
 ---@return DataStat.Procedure
-function DataStat.Procedure.new(ident, args, collect, body, pos)
+function DataStat.Procedure.new(ident, params, collect, body, pos)
     ---@class DataStat.Procedure
     return setmetatable({
         type = DataStat.Procedure.mt.__name,
         ident = ident,
-        args = args,
+        params = params,
         collect = collect,
         body = body,
         pos = pos
@@ -424,7 +424,7 @@ function Atom.Expr.new(expr, pos)
     }, Atom.Expr.mt)
 end
 
-
+---@alias Node DataStat|Stat|Expr|Atom
 return {
     DataStat = DataStat, Stat = Stat,
     Expr = Expr, Atom = Atom

@@ -7,7 +7,7 @@ local Value = {
     }
 }
 ---@param value any
----@param typ string
+---@param typ string?
 ---@return Value
 function Value.new(value, typ)
     ---@class Value
@@ -29,3 +29,7 @@ end
 function Value:innerType()
     return type(self.value)
 end
+
+return {
+    Value = Value
+}

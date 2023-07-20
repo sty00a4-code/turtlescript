@@ -1,4 +1,5 @@
 ---@alias ByteCode integer
+---@alias Code ByteCode[]
 local ByteCode = {
     None = 0x0,
     Halt = 0x1,
@@ -66,6 +67,7 @@ function Program.new()
         variables = {},
         ---@type Constant[]
         constants = {},
+
         ---@type Scope[]
         scopes = {},
     }, Program.mt)
@@ -108,7 +110,7 @@ local Function = {
 }
 ---@param ident string
 ---@param parameters Parameter[]
----@param code ByteCode[]
+---@param code Code
 ---@return Function
 function Function.new(ident, parameters, code)
     ---@class Function
@@ -125,7 +127,7 @@ local Variable = {
     }
 }
 ---@param ident string
----@param code ByteCode[]
+---@param code Code
 ---@return Variable
 function Variable.new(ident, code)
     ---@class Variable
@@ -140,7 +142,7 @@ local Constant = {
     }
 }
 ---@param ident string
----@param code ByteCode[]
+---@param code Code
 ---@return Constant
 function Constant.new(ident, code)
     ---@class Constant
@@ -150,26 +152,22 @@ function Constant.new(ident, code)
     }, Constant.mt)
 end
 
-local Scope = {
+local ScopePreset = {
     mt = {
-        __name = "scope"
+        __name = "scopePreset"
     }
 }
----@param locals Variable[]
----@param parameters Parameter[]
----@param globals table<integer, Variable|Constant>
----@param parent Scope?
----@param children Scope[]
----@return Scope
-function Scope.new(locals, parameters, globals, parent, children)
-    ---@class Scope
+---@param locals string[]
+---@param parent ScopePreset?
+---@param children ScopePreset[]
+---@return ScopePreset
+function ScopePreset.new(locals, parent, children)
+    ---@class ScopePreset
     return setmetatable({
         locals = locals,
-        parameters = parameters,
-        globals = globals,
         parent = parent,
         children = children,
-    }, Scope.mt)
+    }, ScopePreset.mt)
 end
 
 return {
@@ -180,5 +178,5 @@ return {
     Function = Function,
     Variable = Variable,
     Constant = Constant,
-    Scope = Scope,
+    ScopePreset = ScopePreset,
 }
