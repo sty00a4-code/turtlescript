@@ -22,7 +22,6 @@ local ByteCode = {
     Param = 0x32, -- parameterAddr
     Local = 0x33, -- localAddr
     SetVar = 0x34, -- variableAddr
-    SetParam = 0x36, -- parameterAddr
     SetLocal = 0x35, -- localAddr
 
     Add = 0x40,
