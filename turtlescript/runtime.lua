@@ -19,25 +19,9 @@ function Call.new(type, codePointer, pointer, args)
         codePointer = codePointer,
         pointer = pointer,
         args = args,
+        ---@type Value[]
+        locals = {}
     }, Call.mt)
-end
-local Scope = {
-    mt = {
-        __name = "scope"
-    }
-}
----@param locals string[]
----@return Scope
-function Scope.new(locals)
-    local values = {}
-    for i = 1, #locals do
-        table.insert(values, value.Value.new(nil))
-    end
-    ---@class Scope
-    return setmetatable({
-        locals = locals,
-        values = values,
-    }, Scope.mt)
 end
 
 local Interpreter = {
@@ -72,10 +56,8 @@ function Interpreter.new(program)
         getCall = Interpreter.getCall,
         pushCall = Interpreter.pushCall,
         popCall = Interpreter.popCall,
-        getScope = Interpreter.getScope,
         getLocal = Interpreter.getLocal,
-        pushScope = Interpreter.pushScope,
-        popScope = Interpreter.popScope,
+        getParam = Interpreter.getParam,
         step = Interpreter.step,
         run = Interpreter.run,
     }, Interpreter.mt)
@@ -174,21 +156,23 @@ end
 function Interpreter:popCall()
     table.remove(self.callStack)
 end
-
 ---@param self Interpreter
----@return Call?
-function Interpreter:getScope()
-    return self.callStack[#self.callStack]
+---@param addr integer
+---@return Value?
+function Interpreter:getLocal(addr)
+    local call = self:getCall()
+    if call then
+        return call.locals[addr]
+    end
 end
 ---@param self Interpreter
----@param call Call
-function Interpreter:pushScope(call)
-    table.insert(self.callStack, call)
-end
----@param self Interpreter
----@return Call?
-function Interpreter:popScope()
-    table.remove(self.callStack)
+---@param index integer
+---@return Value?
+function Interpreter:getParam(index)
+    local call = self:getCall()
+    if call then
+        return call.args[index]
+    end
 end
 
 ---@param self Interpreter
@@ -316,6 +300,20 @@ function Interpreter:step()
         end
         self:push(value)
         return true
+    elseif instr == ByteCode.Local then
+        local value = self:getLocal(addr)
+        if not value then
+            return false, "no local"
+        end
+        self:push(value)
+        return true
+    elseif instr == ByteCode.Param then
+        local value = self:getParam(addr)
+        if not value then
+            return false, "no local"
+        end
+        self:push(value)
+        return true
     elseif instr == ByteCode.Param then
         local call = self:getCall()
         if not call then
@@ -346,6 +344,5 @@ end
 
 return {
     Call = Call,
-    Scope = Scope,
     Interpreter = Interpreter
 }

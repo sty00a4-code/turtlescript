@@ -30,6 +30,8 @@ function Compiler.new(path)
         ptrType = nil,
         scopePtr = 0,
 
+        getVar = Compiler.getVar,
+        getConst = Compiler.getConst,
         gotoVar = Compiler.gotoVar,
         gotoConst = Compiler.gotoConst,
         gotoProc = Compiler.gotoProc,
@@ -47,6 +49,18 @@ function Compiler.new(path)
         compileBody = Compiler.compileBody,
         compileNode = Compiler.compileNode,
     }, Compiler.mt)
+end
+---@param self Compiler
+---@param ident string
+---@return integer?
+function Compiler:getVar(ident)
+    return self.names.varialbes[ident]
+end
+---@param self Compiler
+---@param ident string
+---@return integer?
+function Compiler:getConst(ident)
+    return self.names.constants[ident]
 end
 ---@param self Compiler
 ---@param ptr integer
@@ -184,6 +198,7 @@ end
 ---@param self Compiler
 ---@param node DataStat|Stat|Expr|Atom
 function Compiler:compileNode(node)
+    --- DATA STAT
     if node.type == "dataStat.variable" then
         local ident, expr = node.ident, node.expr
         if self.names.varialbes[ident.ident] then
@@ -244,6 +259,7 @@ function Compiler:compileNode(node)
             ---@diagnostic disable-next-line: param-type-mismatch
             return self:compileNode(body)
         end
+    --- STAT
     elseif node.type == "stat.do" then
         local ident, args = node.ident, node.args
         local procPtr = self.names.procedures[ident.ident]
@@ -281,16 +297,27 @@ function Compiler:compileNode(node)
             error "no scope"
         end
     elseif node.type == "stat.assign" then
-        local scope = self.program.scopes[self.scopePtr]
         local ident, expr = node.ident, node.expr
         ---@diagnostic disable-next-line: param-type-mismatch
         self:compileNode(expr)
+        local scope = self.program.scopes[self.scopePtr]
         local addr = scope:getLocal(ident.ident)
         if addr then
             self:write(code.ByteCode.SetLocal, addr)
             return
         end
+        local addr = self:getVar(ident.ident)
+        if addr then
+            self:write(code.ByteCode.SetVar, addr)
+            return
+        end
+        local addr = self:getConst(ident.ident)
+        if addr then
+            return nil, ("cannot assign to constant %q"):format(ident.ident), ident.pos
+        end
         return nil, ("cannot find %q in this scope"):format(ident.ident), ident.pos
+
+    --- todo! control flow
 
     elseif node.type == "stat.return" then
         local expr = node.expr
@@ -299,6 +326,7 @@ function Compiler:compileNode(node)
         end
         self:write(code.ByteCode.Return)
     end
+    --- EXPR
 end
 
 return {
