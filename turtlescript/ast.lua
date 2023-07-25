@@ -67,7 +67,7 @@ end
 ---@param ident Atom.Ident
 ---@param params Atom.Ident[]
 ---@param collect Atom.Ident?
----@param body Stat|Block
+---@param body Block
 ---@param pos Position
 ---@return DataStat.Procedure
 function DataStat.Procedure.new(ident, params, collect, body, pos)

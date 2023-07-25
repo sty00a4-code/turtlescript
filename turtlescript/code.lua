@@ -10,7 +10,7 @@ local ByteCode = {
     GotoProc = 0x10, -- procAddr
     GotoFunc = 0x11, -- funcAddr
     CallLua = 0x12, -- luaAddr
-    Return = 0x13, -- amount
+    Return = 0x13,
 
     Nil = 0x20,
     Number = 0x21, -- number
@@ -68,7 +68,7 @@ function Program.new()
         ---@type Constant[]
         constants = {},
 
-        ---@type Scope[]
+        ---@type ScopePreset[]
         scopes = {},
     }, Program.mt)
 end
@@ -101,6 +101,7 @@ function Procedure.new(ident, parameters, code)
         ident = ident,
         parameters = parameters,
         code = code,
+        memory = 0
     }, Procedure.mt)
 end
 local Function = {
@@ -118,6 +119,7 @@ function Function.new(ident, parameters, code)
         ident = ident,
         parameters = parameters,
         code = code,
+        memory = 0
     }, Function.mt)
 end
 
@@ -157,7 +159,7 @@ local ScopePreset = {
         __name = "scopePreset"
     }
 }
----@param locals string[]
+---@param locals table<string, integer>
 ---@param parent ScopePreset?
 ---@param children ScopePreset[]
 ---@return ScopePreset
@@ -167,7 +169,19 @@ function ScopePreset.new(locals, parent, children)
         locals = locals,
         parent = parent,
         children = children,
+        getLocal = ScopePreset.getLocal
     }, ScopePreset.mt)
+end
+---@param self ScopePreset
+---@param ident string
+---@return integer?
+function ScopePreset:getLocal(ident)
+    if self.locals[ident] then
+        return self.locals[ident]
+    end
+    if self.parent then
+        return self.parent:getLocal(ident)
+    end
 end
 
 return {

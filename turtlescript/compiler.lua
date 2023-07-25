@@ -28,12 +28,19 @@ function Compiler.new(path)
         funcPtr = 0,
         ---@type "proc"|"func"|"var"|"const"|nil
         ptrType = nil,
+        scopePtr = 0,
 
         gotoVar = Compiler.gotoVar,
         gotoConst = Compiler.gotoConst,
         gotoProc = Compiler.gotoProc,
         gotoFunc = Compiler.gotoFunc,
         getCode = Compiler.getCode,
+        getScope = Compiler.getScope,
+        newScope = Compiler.newScope,
+        upScope = Compiler.upScope,
+        downScope = Compiler.downScope,
+        getLocal = Compiler.getLocal,
+        newAddr = Compiler.newAddr,
         write = Compiler.write,
         overwrite = Compiler.overwrite,
         compile = Compiler.compile,
@@ -93,6 +100,50 @@ function Compiler:getCode()
     return code
 end
 ---@param self Compiler
+---@return ScopePreset?
+function Compiler:getScope()
+    return self.program.scopes[self.scopePtr]
+end
+---@param self Compiler
+function Compiler:newScope()
+    local parent = self.program.scopes[#self.program.scopes]
+    local scope = code.ScopePreset.new({}, parent, {})
+    table.insert(self.program.scopes, scope)
+    if parent then
+        table.insert(parent.children, scope)
+    end
+end
+---@param self Compiler
+function Compiler:upScope()
+    self.scopePtr = self.scopePtr + 1
+end
+---@param self Compiler
+function Compiler:downScope()
+    self.scopePtr = self.scopePtr - 1
+end
+---@param self Compiler
+---@param ident string
+---@return integer?
+function Compiler:getLocal(ident)
+    local currentScope = self:getScope()
+    if currentScope then
+        return currentScope:getLocal(ident)
+    end
+end
+---@param self Compiler
+---@return integer?
+function Compiler:newAddr()
+    if self.ptrType == "proc" then
+        local proc = self.program.procedures[self.procPtr]
+        proc.memory = proc.memory + 1
+        return proc.memory
+    elseif self.ptrType == "func" then
+        local func = self.program.functions[self.funcPtr]
+        func.memory = func.memory + 1
+        return func.memory
+    end
+end
+---@param self Compiler
 ---@param instr ByteCode
 ---@param arg1 integer?
 function Compiler:write(instr, arg1)
@@ -134,68 +185,119 @@ end
 ---@param node DataStat|Stat|Expr|Atom
 function Compiler:compileNode(node)
     if node.type == "dataStat.variable" then
-        if self.names.varialbes[node.ident] then
-            return nil, ("duplicate definition of variable %q"):format(node.ident)
+        local ident, expr = node.ident, node.expr
+        if self.names.varialbes[ident.ident] then
+            return nil, ("duplicate definition of variable %q"):format(ident.ident)
         end
-        self.names.varialbes[node.ident] = #self.program.variables
+        self.names.varialbes[ident.ident] = #self.program.variables
         self:gotoVar(#self.program.variables)
         ---@diagnostic disable-next-line: param-type-mismatch
-        table.insert(self.program.variables, code.Variable.new(node.ident, {}))
-        return self:compileNode(node.expr)
+        table.insert(self.program.variables, code.Variable.new(ident.ident, {}))
+        ---@diagnostic disable-next-line: param-type-mismatch
+        return self:compileNode(expr)
     elseif node.type == "dataStat.constant" then
-        if self.names.constants[node.ident] then
-            return nil, ("duplicate definition of constant %q"):format(node.ident)
+        local ident, expr = node.ident, node.expr
+        if self.names.constants[ident.ident] then
+            return nil, ("duplicate definition of constant %q"):format(ident.ident)
         end
-        self.names.constants[node.ident] = #self.program.constants
+        self.names.constants[ident.ident] = #self.program.constants
         self:gotoConst(#self.program.constants)
         ---@diagnostic disable-next-line: param-type-mismatch
-        table.insert(self.program.constants, code.Constant.new(node.ident, {}))
-        return self:compileNode(node.expr)
+        table.insert(self.program.constants, code.Constant.new(ident.ident, {}))
+        ---@diagnostic disable-next-line: param-type-mismatch
+        return self:compileNode(expr)
     elseif node.type == "dataStat.procedure" then
-        if self.names.procedures[node.ident] then
-            return nil, ("duplicate definition of procedure %q"):format(node.ident)
+        local ident, params, collect, body = node.ident, node.params, node.collect, node.body
+        if self.names.procedures[ident.ident] then
+            return nil, ("duplicate definition of procedure %q"):format(ident.ident)
         end
-        self.names.procedures[node.ident] = #self.program.procedures
+        self.names.procedures[ident.ident] = #self.program.procedures
         self:gotoProc(#self.program.procedures)
         local params = {}
-        for _, ident in ipairs(node.params) do
+        for _, ident in ipairs(params) do
             table.insert(params, ident.ident)
         end
         ---@diagnostic disable-next-line: param-type-mismatch
-        table.insert(self.program.procedures, code.Procedure.new(node.ident, params, {}))
-        return self:compileBody(node.body)
-    elseif node.type == "dataStat.function" then
-        if self.names.functions[node.ident] then
-            return nil, ("duplicate definition of function %q"):format(node.ident)
+        table.insert(self.program.procedures, code.Procedure.new(ident.ident, params, {}))
+        if type(body) == "table" then
+            return self:compileBody(body)
+        else
+            ---@diagnostic disable-next-line: param-type-mismatch
+            return self:compileNode(body)
         end
-        self.names.functions[node.ident] = #self.program.functions
+    elseif node.type == "dataStat.function" then
+        local ident, params, collect, body = node.ident, node.params, node.collect, node.body
+        if self.names.functions[ident.ident] then
+            return nil, ("duplicate definition of function %q"):format(ident.ident), ident.pos
+        end
+        self.names.functions[ident.ident] = #self.program.functions
         self:gotoFunc(#self.program.functions)
         local params = {}
-        for _, ident in ipairs(node.params) do
+        for _, ident in ipairs(params) do
             table.insert(params, ident.ident)
         end
         ---@diagnostic disable-next-line: param-type-mismatch
-        table.insert(self.program.functions, code.Function.new(node.ident, params, {}))
-        return self:compileBody(node.body)
+        table.insert(self.program.functions, code.Function.new(ident.ident, params, {}))
+        if type(body) == "table" then
+            return self:compileBody(body)
+        else
+            ---@diagnostic disable-next-line: param-type-mismatch
+            return self:compileNode(body)
+        end
     elseif node.type == "stat.do" then
-        local procPtr = self.names.procedures[node.ident]
+        local ident, args = node.ident, node.args
+        local procPtr = self.names.procedures[ident.ident]
         if not procPtr then
-            return nil, ("no procedure named %q"):format(node.ident)
+            return nil, ("no procedure named %q"):format(ident.ident), ident.pos
         end
         ---todo! arguments
         self:write(code.ByteCode.GotoProc, procPtr)
     elseif node.type == "stat.call" then
+        local ident, args = node.ident, node.args
         local luaPtr = #self.program.lua
-        for idx, ident in ipairs(self.program.lua) do
-            if node.ident == ident then
+        for idx, luaIdent in ipairs(self.program.lua) do
+            if ident.ident == luaIdent then
                 luaPtr = idx
                 break
             end
         end
         ---@diagnostic disable-next-line: assign-type-mismatch
-        self.program.lua[luaPtr] = node.ident
+        self.program.lua[luaPtr] = ident.ident
         ---todo! arguments
         self:write(code.ByteCode.CallLua, luaPtr)
+    elseif node.type == "stat.local" then
+        local scope = self.program.scopes[self.scopePtr]
+        local ident, expr = node.ident, node.expr
+        if scope then
+            local addr = self:newAddr()
+            if addr then
+                scope.locals[ident.ident] = addr
+                if expr then
+                    self:compileNode(expr)
+                    self:write(code.ByteCode.SetLocal, addr)
+                end
+            end
+        else
+            error "no scope"
+        end
+    elseif node.type == "stat.assign" then
+        local scope = self.program.scopes[self.scopePtr]
+        local ident, expr = node.ident, node.expr
+        ---@diagnostic disable-next-line: param-type-mismatch
+        self:compileNode(expr)
+        local addr = scope:getLocal(ident.ident)
+        if addr then
+            self:write(code.ByteCode.SetLocal, addr)
+            return
+        end
+        return nil, ("cannot find %q in this scope"):format(ident.ident), ident.pos
+
+    elseif node.type == "stat.return" then
+        local expr = node.expr
+        if expr then
+            self:compileNode(expr)
+        end
+        self:write(code.ByteCode.Return)
     end
 end
 
