@@ -1,3 +1,4 @@
 procedure main
-    call print(1)
+    local name = 1
+    print name
 end

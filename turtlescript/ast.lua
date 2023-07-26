@@ -288,7 +288,7 @@ function Stat.Return.new(expr, pos)
     }, Stat.Return.mt)
 end
 
----@alias Expr Expr.Atom|Expr.Binary|Expr.Unary
+---@alias Expr Expr.Atom|Expr.Binary|Expr.Unary|Expr.Call
 local Expr = {
     Atom = {
         mt = {
@@ -347,14 +347,14 @@ function Expr.Unary.new(op, right, pos)
         pos = pos,
     }, Expr.Unary.mt)
 end
----@param func Atom
+---@param ident Atom.Ident
 ---@param args Expr[]
 ---@return Expr.Call
-function Expr.Call.new(func, args, pos)
+function Expr.Call.new(ident, args, pos)
     ---@class Expr.Call
     return setmetatable({
         type = Expr.Call.mt.__name,
-        func = func,
+        ident = ident,
         args = args,
         pos = pos,
     }, Expr.Call.mt)

@@ -1,5 +1,25 @@
 local code = require "turtlescript.code"
 
+local BinarySymbolToCode = {
+    ["+"] = code.ByteCode.Add,
+    ["-"] = code.ByteCode.Sub,
+    ["*"] = code.ByteCode.Mul,
+    ["/"] = code.ByteCode.Div,
+    ["%"] = code.ByteCode.Mod,
+    ["=="] = code.ByteCode.EQ,
+    ["!="] = code.ByteCode.NE,
+    [">"] = code.ByteCode.GT,
+    ["<"] = code.ByteCode.LT,
+    [">="] = code.ByteCode.GE,
+    ["<="] = code.ByteCode.LE,
+    ["and"] = code.ByteCode.And,
+    ["or"] = code.ByteCode.Or,
+}
+local UnarySymbolToCode = {
+    ["-"] = code.ByteCode.Neg,
+    ["not"] = code.ByteCode.Not,
+}
+
 local Compiler = {
     mt = {
         __name = "compiler"
@@ -325,8 +345,55 @@ function Compiler:compileNode(node)
             self:compileNode(expr)
         end
         self:write(code.ByteCode.Return)
-    end
     --- EXPR
+    elseif node.type == "expr.atom" then
+        return self:compileNode(node.atom)
+    elseif node.type == "expr.binary" then
+        local op, left, right = node.op, node.left, node.right
+        self:compileNode(left)
+        self:compileNode(right)
+        self:write(BinarySymbolToCode[op])
+    elseif node.type == "expr.unary" then
+        local op, right = node.op, node.right
+        self:compileNode(right)
+        self:write(UnarySymbolToCode[op])
+    elseif node.type == "expr.call" then
+        local ident, args = node.ident, node.args
+        local addr = self.names.functions[ident.ident]
+        if not addr then
+            return nil, ("no function found named %q"):format(ident.ident), ident.pos
+        end
+        ---todo! arguments
+        self:write(code.ByteCode.Call, addr)
+    --- ATOM
+    elseif node.type == "atom.ident" then
+        ---@type string
+        ---@diagnostic disable-next-line: assign-type-mismatch
+        local ident = node.ident
+        local addr = self:getLocal(ident)
+        if addr then
+            self:write(code.ByteCode.Local, addr)
+            return
+        end
+        local addr = self:getVar(ident)
+        if addr then
+            self:write(code.ByteCode.Var, addr)
+            return
+        end
+        local addr = self:getConst(ident)
+        if addr then
+            self:write(code.ByteCode.Const, addr)
+            return
+        end
+        return nil, ("no variable found named %q"):format(ident), node.pos
+    elseif node.type == "atom.number" then
+        self:write(code.ByteCode.Number, node.number)
+    elseif node.type == "atom.string" then
+        table.insert(self.program.strings, node.string)
+        self:write(code.ByteCode.String, #self.program.strings)
+    elseif node.type == "atom.expr" then
+        return self:compileNode(node.expr)
+    end
 end
 
 return {
