@@ -22,7 +22,7 @@ local DataStat = {
     },
 }
 ---@param ident Atom.Ident
----@param expr Expr
+---@param expr Expr?
 ---@param pos Position
 ---@return DataStat.Variable
 function DataStat.Variable.new(ident, expr, pos)

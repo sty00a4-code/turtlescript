@@ -1,4 +1,1 @@
-procedure main
-    local name = 1
-    print name
-end
+variable name

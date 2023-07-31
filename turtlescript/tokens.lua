@@ -14,8 +14,18 @@ function Token.new(kind, value, pos)
     return setmetatable({
         kind = kind,
         value = value,
-        pos = pos
+        pos = pos,
+        name = Token.name,
     }, Token.mt)
+end
+---@param self Token
+---@return string
+function Token:name()
+    if self.kind == "keyword" or self.kind == "symbol" then
+        return ("%q"):format(self.value)
+    else
+        return self.kind
+    end
 end
 
 return {
