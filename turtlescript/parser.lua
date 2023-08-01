@@ -99,14 +99,14 @@ function Parser:dataStat()
             local ident, err, epos = self:ident() if err then return nil, err, epos end
             if not ident then error "not working" end
             pos:extend(ident.pos)
-            local token = self:consume()
+            local token = self:get()
             if token then
                 if token.kind == "newline" then
+                    self:consume()
                     return ast.DataStat.Variable.new(ident, nil, pos)
-                else
-                    return nil, ("expected %q or newline, got %s"):format("=", token:name())
                 end
             end
+            local _, err, epos = self:expect("symbol", "=") if err then return nil, err, epos end
             local expr, err, epos = self:expr() if err then return nil, err, epos end
             if not expr then error "not working" end
             pos:extend(expr.pos)
@@ -126,7 +126,7 @@ function Parser:dataStat()
             if not ident then error "not working" end
             local body, err, epos = self:block("keyword", "end") if err then return nil, err, epos end
             if not body then error "not working" end
-            pos:extend(body)
+            pos:extend(body.pos)
             return ast.DataStat.Procedure.new(ident, {}, nil, body, pos), self:statEnd()
         end
     end
@@ -197,14 +197,14 @@ function Parser:stat()
         local ident, err, epos = self:ident() if err then return nil, err, epos end
         if not ident then error "not working" end
         pos:extend(ident.pos)
-        local token = self:consume()
+        local token = self:get()
         if token then
             if token.kind == "newline" then
+                self:consume()
                 return ast.DataStat.Variable.new(ident, nil, pos)
-            else
-                return nil, ("expected %q or newline, got %s"):format("=", token:name())
             end
         end
+        local _, err, epos = self:expect("symbol", "=") if err then return nil, err, epos end
         local expr, err, epos = self:expr() if err then return nil, err, epos end
         if not expr then error "not working" end
         pos:extend(expr.pos)

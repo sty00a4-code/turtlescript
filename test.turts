@@ -1,1 +1,3 @@
-variable name
+procedure main
+    local age = 18
+end
