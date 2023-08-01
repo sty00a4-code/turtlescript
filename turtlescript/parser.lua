@@ -120,9 +120,96 @@ function Parser:dataStat()
             if not expr then error "not working" end
             pos:extend(expr.pos)
             return ast.DataStat.Constant.new(ident, expr, pos), self:statEnd()
+        elseif kw.value == "procedure" then
+            local pos = kw.pos:copy()
+            local ident, err, epos = self:ident() if err then return nil, err, epos end
+            if not ident then error "not working" end
+            local body, err, epos = self:block("keyword", "end") if err then return nil, err, epos end
+            if not body then error "not working" end
+            pos:extend(body)
+            return ast.DataStat.Procedure.new(ident, {}, nil, body, pos), self:statEnd()
         end
     end
     return nil, ("unexpected %s"):format(kw:name()), kw.pos
+end
+
+---@param self Parser
+---@param kind TokenKind?
+---@param value string?
+function Parser:block(kind, value)
+    local doToken = self:get()
+    if doToken then
+        if doToken.kind == "keyword" and doToken.value == "do" then
+            self:consume()
+            local stat, err, epos = self:stat() if err then return nil, err, epos end
+            if not stat then error "not working" end
+            return { stat }
+        end
+    end
+    local startToken, err, epos = self:expect("newline") if err then return nil, err, epos end
+    if not startToken then error "not working" end
+    local pos = startToken.pos:copy()
+    ---@type Stat[]
+    local nodes = {}
+    while true do
+        local token = self:get() if not token then
+            break
+        end
+        if kind and value then
+            if token.kind == kind and token.value == value then
+                break
+            end
+        end
+        local stat, err, epos = self:stat() if err then return nil, err, epos end
+        if not stat then error "not working" end
+        pos:extend(stat.pos)
+        table.insert(nodes, stat)
+    end
+    if kind and value then
+        local token = self:get()
+        if token then
+            if token.kind ~= kind or token.value ~= value then
+                return nil, ("expected %s, got %s"):format(token.name({kind = kind, value = value}), token:name()), token.pos
+            end
+            self:consume()
+        else
+            return nil, ("expected %s, got end of file"):format(startToken.name({kind = kind, value = value}))
+        end
+    end
+    nodes.pos = pos
+    return nodes
+end
+---@param self Parser
+function Parser:stat()
+    local otherToken = self:get()
+    if not otherToken then
+        return nil, ("unexpected end of file")
+    end
+    if otherToken.kind == "ident" then
+        error "todo: statement call"
+    end
+    local kw = self:consume()
+    if not kw then
+        return nil, ("unexpected end of file")
+    end
+    if kw.kind == "keyword" and kw.value == "local" then
+        local pos = kw.pos:copy()
+        local ident, err, epos = self:ident() if err then return nil, err, epos end
+        if not ident then error "not working" end
+        pos:extend(ident.pos)
+        local token = self:consume()
+        if token then
+            if token.kind == "newline" then
+                return ast.DataStat.Variable.new(ident, nil, pos)
+            else
+                return nil, ("expected %q or newline, got %s"):format("=", token:name())
+            end
+        end
+        local expr, err, epos = self:expr() if err then return nil, err, epos end
+        if not expr then error "not working" end
+        pos:extend(expr.pos)
+        return ast.Stat.Local.new(ident, expr, pos), self:statEnd()
+    end
 end
 
 ---@param self Parser

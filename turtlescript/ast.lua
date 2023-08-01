@@ -82,7 +82,7 @@ function DataStat.Procedure.new(ident, params, collect, body, pos)
     }, DataStat.Procedure.mt)
 end
 
----@alias Body Stat|Stat[]
+---@alias Body Stat[]
 ---@alias Stat Stat.Do|Stat.Call|Stat.Local|Stat.Assign|Stat.If|Stat.Repeat|Stat.While|Stat.For|Stat.ForEach|Stat.ForEachPair|Stat.Return
 local Stat = {
     Do = {
