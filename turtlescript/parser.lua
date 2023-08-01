@@ -97,6 +97,7 @@ function Parser:dataStat()
         if kw.value == "variable" then
             local pos = kw.pos:copy()
             local ident, err, epos = self:ident() if err then return nil, err, epos end
+            if not ident then error "not working" end
             pos:extend(ident.pos)
             local token = self:consume()
             if token then
@@ -107,18 +108,55 @@ function Parser:dataStat()
                 end
             end
             local expr, err, epos = self:expr() if err then return nil, err, epos end
+            if not expr then error "not working" end
             pos:extend(expr.pos)
             return ast.DataStat.Variable.new(ident, expr, pos), self:statEnd()
         elseif kw.value == "constant" then
             local pos = kw.pos:copy()
             local ident, err, epos = self:ident() if err then return nil, err, epos end
+            if not ident then error "not working" end
             local _, err, epos = self:expect("symbol", "=") if err then return nil, err, epos end
             local expr, err, epos = self:expr() if err then return nil, err, epos end
+            if not expr then error "not working" end
             pos:extend(expr.pos)
             return ast.DataStat.Constant.new(ident, expr, pos), self:statEnd()
         end
     end
     return nil, ("unexpected %s"):format(kw:name()), kw.pos
+end
+
+---@param self Parser
+function Parser:expr()
+    ---todo! expr
+    local atom, err, epos = self:atom() if err then return nil, err, epos end
+    if not atom then error "not working" end
+    return ast.Expr.Atom.new(atom, atom.pos)
+end
+---@param self Parser
+function Parser:atom()
+    local token = self:consume() if not token then
+        return nil, ("unexpected end of file")
+    end
+    if token.kind == "ident" then
+        return ast.Atom.Ident.new(token.value, token.pos)
+    elseif token.kind == "number" then
+        return ast.Atom.Number.new(token.value, token.pos)
+    elseif token.kind == "string" then
+        return ast.Atom.String.new(token.value, token.pos)
+    elseif token.kind == "symbol" and token.value == "(" then
+        local expr, err, epos = self:expr() if err then return nil, err, epos end
+        if not expr then error "not working" end
+        local _, err, epos = self:expect("symbol", ")") if err then return nil, err, epos end
+        return ast.Atom.Expr.new(expr, expr.pos)
+    else
+        return nil, ("unexpected %s"):format(token:name()), token.pos
+    end
+end
+---@param self Parser
+function Parser:ident()
+    local ident, err, epos = self:expect("ident") if err then return nil, err, epos end
+    if not ident then error "not working" end
+    return ast.Atom.Ident.new(ident.value, ident.pos)
 end
 
 return {
