@@ -19,7 +19,14 @@ if args[1] then
     local tokens, err, epos = turtlescript.lexer.lex(path, text) if err then print_error(err, epos) return end
     ---@diagnostic disable-next-line: param-type-mismatch
     local ast, err, epos = turtlescript.parser.parse(path, tokens) if err then print_error(err, epos) return end
-    for _, stat in ipairs(ast) do print(stat) end
+    for _, stat in ipairs(ast) do
+        print(stat)
+        if stat.body then
+            for _, stat in ipairs(stat.body) do
+                print("", stat)
+            end
+        end
+    end
 else
     print "USAGE:"
     print "    ts [path] - runs the procedure 'main' in the program"

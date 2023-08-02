@@ -186,7 +186,38 @@ function Parser:stat()
         return nil, ("unexpected end of file")
     end
     if otherToken.kind == "ident" then
-        error "todo: statement call"
+        local path, err, epos = self:ident() if err then return nil, err, epos end
+        if not path then error "not working" end
+        local pos = path.pos:copy()
+        local token = self:consume()
+        if not token then
+            return nil, ("unexpected end of file")
+        end
+        if token.kind == "symbol" and (
+            token.value == "=" or token.value == "+=" or token.value == "-=" or
+            token.value == "*=" or token.value == "/="
+        ) then
+            local expr, err, epos = self:expr() if err then return nil, err, epos end
+            if not expr then error "not working" end
+            pos:extend(expr.pos)
+            return ast.Stat.Assign.new(path, token.value, expr, pos), self:statEnd()
+        elseif token.kind == "symbol" and token.value == ":" then
+            local args = {}
+            while self:get() do
+                local expr, err, epos = self:expr() if err then return nil, err, epos end
+                if not expr then error "not working" end
+                pos:extend(expr.pos)
+                table.insert(args, expr)
+                local token = self:get() if not token then break end
+                if token.kind == "newline" then break end
+                self:expect("symbol", ",")
+            end
+            return ast.Stat.Call.new(path, args, pos), self:statEnd()
+        elseif token.kind == "newline" then
+            return ast.Stat.Call.new(path, {}, pos)
+        else
+            return nil, ("unexpected %s"):format(token:name()), token.pos
+        end
     end
     local kw = self:consume()
     if not kw then

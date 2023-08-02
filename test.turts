@@ -1,3 +1,4 @@
 procedure main
-    local age = 18
+    local age
+    print: age
 end
