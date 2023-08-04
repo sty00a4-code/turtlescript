@@ -1,4 +1,1 @@
-procedure main
-    local age
-    print: age
-end
+function hello(x) = x

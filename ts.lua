@@ -29,9 +29,17 @@ if args[1] then
         end
         if stat.body then
             print "body"
-            for _, stat in ipairs(stat.body) do
-                print("", stat)
+            if stat.body.type then
+                print("", stat.body)
+            else
+                for _, stat in ipairs(stat.body) do
+                    print("", stat)
+                end
             end
+        end
+        if stat.collect then
+            print "collect"
+            print("", stat.collect)
         end
     end
 else
