@@ -24,6 +24,8 @@ function Parser.new(tokens)
         block = Parser.block,
         stat = Parser.stat,
 
+        params = Parser.params,
+
         expr = Parser.expr,
         logic = Parser.logic,
         comp = Parser.comp,
@@ -124,10 +126,17 @@ function Parser:dataStat()
             local pos = kw.pos:copy()
             local ident, err, epos = self:ident() if err then return nil, err, epos end
             if not ident then error "not working" end
+            local args = {}
+            local token = self:get() if token then
+                if token.kind == "symbol" and token.value == "(" then
+                    args, err, epos = self:params() if err then return nil, err, epos end
+                    if not args then error "not working" end
+                end
+            end
             local body, err, epos = self:block("keyword", "end") if err then return nil, err, epos end
             if not body then error "not working" end
             pos:extend(body.pos)
-            return ast.DataStat.Procedure.new(ident, {}, nil, body, pos), self:statEnd()
+            return ast.DataStat.Procedure.new(ident, args, nil, body, pos), self:statEnd()
         end
     end
     return nil, ("unexpected %s"):format(kw:name()), kw.pos
@@ -241,6 +250,33 @@ function Parser:stat()
         pos:extend(expr.pos)
         return ast.Stat.Local.new(ident, expr, pos), self:statEnd()
     end
+end
+
+---@param self Parser
+function Parser:params()
+    ---@type Atom.Ident[]
+    local params = {}
+    local _, err, epos = self:expect("symbol", "(") if err then return nil, err, epos end
+    local token = self:get() if not token then
+        return nil, ("unexpected end of file")
+    end
+    if token.kind == "symbol" and token.value == ")" then
+        self:consume()
+        return params
+    end
+    while self:get() do
+        local ident, err, epos = self:ident() if err then return nil, err, epos end
+        table.insert(params, ident)
+        local token = self:get() if not token then break end
+        if token.kind == "symbol" and token.value == ")" then
+            break
+        end
+        if token.kind == "symbol" and token.value == "," then
+            self:consume()
+        end
+    end
+    local _, err, epos = self:expect("symbol", ")") if err then return nil, err, epos end
+    return params
 end
 
 ---@param self Parser

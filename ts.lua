@@ -21,7 +21,14 @@ if args[1] then
     local ast, err, epos = turtlescript.parser.parse(path, tokens) if err then print_error(err, epos) return end
     for _, stat in ipairs(ast) do
         print(stat)
+        if stat.params then
+            print "params"
+            for _, param in ipairs(stat.params) do
+                print("", param)
+            end
+        end
         if stat.body then
+            print "body"
             for _, stat in ipairs(stat.body) do
                 print("", stat)
             end
