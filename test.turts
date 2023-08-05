@@ -1,1 +1,3 @@
-function hello(x) = x
+procedure main
+    print: "hahaha"
+end

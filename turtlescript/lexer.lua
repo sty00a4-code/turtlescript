@@ -205,6 +205,22 @@ function Lexer:next()
             return nil, "invalid symbol '"..symbol.."'", pos
         end
         return Token.new("symbol", symbol, pos)
+    elseif c == '"' or c == "'" then
+        self:advance()
+        local endChar = c
+        local string = ""
+        while self:get() do
+            local c = self:get() if #c == 0 then break end
+            if c == endChar then break end
+            string = string..c
+            self:advance()
+        end
+        if self:get() ~= endChar then
+            return nil, "unclosed string", pos
+        end
+        pos:extend(self:pos())
+        self:advance()
+        return Token.new("string", string, pos)
     elseif self:number() then
         self:advance()
         local number = c
